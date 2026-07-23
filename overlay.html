@@ -2,313 +2,467 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>방송 엔딩 크레딧</title>
+<title>방송 엔딩 씬</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0b1210;
     --gold: #e3b23c;
     --silver: #c9d3d6;
     --bronze: #c98455;
-    --mint: #6fd8a5;
-    --violet: #b69cd8;
-    --text: #f3efe4;
-    --muted: #8a938d;
-    --hairline: rgba(227, 178, 60, 0.25);
+    --pink: #f9c2c4;
+    --brown: #967978;
   }
 
   * { box-sizing: border-box; }
 
   html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    background: var(--bg);
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: transparent;   /* OBS에서 방송 화면이 그대로 비쳐 보이도록 투명 */
     overflow: hidden;
     font-family: 'Noto Sans KR', sans-serif;
-    color: var(--text);
   }
 
+  /* 1920x1080(FHD) 기준으로 디자인한 고정 캔버스.
+     브라우저 소스 크기가 다르면 JS가 비율을 유지한 채 통째로 축소/확대한다. */
   #stage {
     position: fixed;
-    inset: 0;
+    top: 0; left: 0;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: 0 0;
     display: none;
   }
 
-  #stars {
+  .scene {
     position: absolute;
     inset: 0;
-    overflow: hidden;
-    pointer-events: none;
+    display: none;
   }
-  .star {
-    position: absolute;
-    bottom: -10px;
-    width: 3px;
-    height: 3px;
-    border-radius: 50%;
-    background: var(--gold);
-    opacity: 0.35;
-    animation: drift linear infinite;
-  }
-  @keyframes drift {
-    from { transform: translateY(0); opacity: 0; }
-    10%  { opacity: 0.35; }
-    90%  { opacity: 0.2; }
-    to   { transform: translateY(-110vh); opacity: 0; }
-  }
+  .scene.active { display: block; }
 
-  #scroller {
-    position: absolute;
-    left: 50%;
-    top: 0;
-    width: min(640px, 88vw);
-    transform: translateX(-50%) translateY(100vh);
-    text-align: center;
-  }
-
-  .eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    letter-spacing: 0.28em;
-    color: var(--gold);
-    text-transform: uppercase;
-    margin: 0 0 6px;
-  }
-
-  h1.title {
-    font-family: 'Black Han Sans', sans-serif;
-    font-weight: 400;
-    font-size: 42px;
-    line-height: 1.3;
-    margin: 0 0 8px;
-    color: var(--text);
-  }
-
-  .subdate {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    color: var(--muted);
-    margin: 0 0 90px;
-  }
-
-  section.credit-section {
-    margin-bottom: 72px;
-  }
-
-  section.credit-section .eyebrow.mint { color: var(--mint); }
-  section.credit-section .eyebrow.violet { color: var(--violet); }
-  section.credit-section .eyebrow.muted { color: var(--muted); }
-
-  h2.section-title {
-    font-family: 'Black Han Sans', sans-serif;
-    font-weight: 400;
-    font-size: 24px;
-    margin: 0 0 26px;
-  }
-
-  hr.rule {
-    border: none;
-    border-top: 1px solid var(--hairline);
-    width: 64px;
-    margin: 0 auto 26px;
-  }
-
-  .line {
-    display: flex;
+  /* ---------- 공통 아바타 (배경 없이 그림만) ---------- */
+  .avatar {
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
-    align-items: baseline;
-    gap: 10px;
-    font-size: 17px;
-    padding: 7px 0;
+    flex-shrink: 0;
+    background: transparent;
+  }
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* 방송 화면 위에 바로 얹히므로, 밝은 배경에서도 형태가 살도록 옅은 외곽 그림자 */
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.45));
   }
 
-  .line .nick { color: var(--text); font-weight: 500; }
-  .line .rank {
+  /* ---------- 이름 박스 (등수 + 닉네임 / 개수) ---------- */
+  .name-box {
+    background: #fffdfa;
+    border: 3px solid var(--brown);
+    border-radius: 18px;
+    padding: 9px 16px 8px;
+    text-align: center;
+    box-shadow: 0 3px 0 rgba(150,121,120,0.45);
+    min-width: 150px;
+  }
+  .name-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+  }
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--pink);
+    border: 2px solid var(--brown);
+    color: var(--brown);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    color: var(--muted);
-    width: 22px;
-    text-align: right;
-  }
-  .line .stay { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
-
-  .line.top3 {
-    font-size: 23px;
-    padding: 12px 0;
-  }
-  .line.top3 .rank {
-    font-size: 26px;
-    width: 34px;
-  }
-  .line.top3 .nick { font-weight: 700; }
-  .line.gold .nick, .line.gold .rank { color: var(--gold); text-shadow: 0 0 14px rgba(227,178,60,0.45); }
-  .line.silver .nick, .line.silver .rank { color: var(--silver); }
-  .line.bronze .nick, .line.bronze .rank { color: var(--bronze); }
-  .line .amount { color: var(--gold); font-family: 'JetBrains Mono', monospace; font-size: 15px; }
-  .line .count { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
-
-  .empty {
-    color: var(--muted);
+    font-weight: 700;
     font-size: 14px;
-    font-style: normal;
+    flex-shrink: 0;
+  }
+  .nick {
+    font-size: 20px;
+    font-weight: 700;
+    color: #17120f;          /* 닉네임은 검은색 */
+    white-space: nowrap;
+  }
+  .count {
+    margin-top: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--brown);
   }
 
-  .closing {
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: 0.12em;
-    color: var(--gold);
-    font-size: 13px;
-    margin-top: 40px;
-    padding-bottom: 40vh;
+  /* ---------- 씬 1: 채팅 자막 티커 (우->좌, 화면 아래쪽) ---------- */
+  .scene-chat-ticker { overflow: hidden; }
+  .ticker-track {
+    position: absolute;
+    left: 0;
+    bottom: 48px;            /* 화면 아래쪽에 자막처럼 */
+    display: flex;
+    align-items: flex-end;
+    white-space: nowrap;
+    transform: translateX(1920px);   /* 1920 기준 - 오른쪽 화면 밖에서 시작 */
+    will-change: transform;
+  }
+  .ticker-card {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin: 0 30px;
+    flex-shrink: 0;
+  }
+  .ticker-card .avatar { width: 96px; height: 96px; }
+
+  /* 1~3등 - 더 크고 특별하게 */
+  .ticker-card.top3 .avatar { width: 138px; height: 138px; }
+  .ticker-card.top3 .name-box { min-width: 200px; padding: 12px 22px 11px; border-width: 4px; }
+  .ticker-card.top3 .rank-badge { width: 42px; height: 42px; font-size: 20px; }
+  .ticker-card.top3 .nick { font-size: 27px; }
+  .ticker-card.top3 .count { font-size: 21px; }
+
+  /* ---------- 씬 2: 후원 리빌 (올림픽 시상대 배치, 화면 아래쪽) ---------- */
+  .scene-donation {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 48px;
+  }
+  #revealHost {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 26px;
+    flex-wrap: nowrap;
+  }
+  .reveal-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;                /* 자리는 잡아두되 보이지 않는 상태로 대기 */
+    transform: scale(0.6);
+  }
+  .reveal-card.show {
+    animation: popIn 0.55s cubic-bezier(.2,1.4,.4,1) forwards;
+  }
+  @keyframes popIn {
+    0%   { opacity: 0; transform: scale(0.4) rotate(-4deg); }
+    60%  { opacity: 1; transform: scale(1.08) rotate(1deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0); }
+  }
+
+  /* 시상대 배치: 등장 순서(5→1)는 그대로 두고, 화면상 위치만 order로 바꾼다.
+     왼쪽부터 4위 · 2위 · 1위 · 3위 · 5위 순으로 서고, 등수가 높을수록 위로 올라간다. */
+  .reveal-card.pos1 { order: 3; margin-bottom: 96px; }  /* 1위 - 가운데, 가장 높게 */
+  .reveal-card.pos2 { order: 2; margin-bottom: 58px; }  /* 2위 - 왼쪽 */
+  .reveal-card.pos3 { order: 4; margin-bottom: 30px; }  /* 3위 - 오른쪽 */
+  .reveal-card.pos4 { order: 1; margin-bottom: 0; }     /* 4위 - 맨 왼쪽 */
+  .reveal-card.pos5 { order: 5; margin-bottom: 0; }     /* 5위 - 맨 오른쪽 */
+
+  .reveal-card .avatar { width: 120px; height: 120px; }
+  .reveal-card.top3 .avatar { width: 164px; height: 164px; }
+  .reveal-card.pos1 .avatar { width: 190px; height: 190px; }
+  .reveal-card.top3 .name-box { min-width: 190px; padding: 12px 20px 11px; border-width: 4px; }
+  .reveal-card.top3 .rank-badge { width: 40px; height: 40px; font-size: 19px; }
+  .reveal-card.top3 .nick { font-size: 25px; }
+  .reveal-card.top3 .count { font-size: 20px; }
+
+  /* ---------- 금 / 은 / 동 공통 ---------- */
+  .gold img   { filter: drop-shadow(0 2px 5px rgba(0,0,0,0.45)) drop-shadow(0 0 18px rgba(227,178,60,0.95)); }
+  .gold .name-box { border-color: var(--gold); box-shadow: 0 3px 0 rgba(227,178,60,0.5); }
+  .gold .rank-badge { background: var(--gold); border-color: #a67c1a; color: #4a340a; }
+
+  .silver img { filter: drop-shadow(0 2px 5px rgba(0,0,0,0.45)) drop-shadow(0 0 16px rgba(201,211,214,0.85)); }
+  .silver .name-box { border-color: #9aa4a7; box-shadow: 0 3px 0 rgba(154,164,167,0.5); }
+  .silver .rank-badge { background: var(--silver); border-color: #7d878a; color: #333b3d; }
+
+  .bronze img { filter: drop-shadow(0 2px 5px rgba(0,0,0,0.45)) drop-shadow(0 0 16px rgba(201,132,85,0.85)); }
+  .bronze .name-box { border-color: var(--bronze); box-shadow: 0 3px 0 rgba(201,132,85,0.5); }
+  .bronze .rank-badge { background: var(--bronze); border-color: #8e5a35; color: #3d2413; }
+
+  .empty-msg {
+    color: #fffdfa;
+    font-size: 16px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.8);
   }
 </style>
 </head>
 <body>
 
 <div id="stage">
-  <div id="stars"></div>
-  <div id="scroller"></div>
+  <div class="scene scene-chat-ticker" id="sceneStay">
+    <div class="ticker-track" id="stayTrack"></div>
+  </div>
+
+  <div class="scene scene-chat-ticker" id="sceneChat">
+    <div class="ticker-track" id="chatTrack"></div>
+  </div>
+
+  <div class="scene scene-donation" id="sceneDonation">
+    <div id="revealHost"></div>
+  </div>
 </div>
 
 <script>
-const PIXELS_PER_SECOND = 55;
+/* ================= 설정 ================= */
+// 자막 티커는 아래 "최대 시간" 안에서 흐른다. 인원이 적으면 굳이 시간을 다 쓰지 않고
+// TICKER_SPEED 속도로 자연스럽게 흐르고 끝난다 (적은 인원인데 기어가는 것 방지).
+let STAY_MS     = 60000;   // 시청시간 자막 최대 시간
+let TICKER_MS   = 60000;   // 채팅 자막 최대 시간
+let DONATION_MS = 30000;   // 후원 리빌 시간
+const TICKER_SPEED = 240;  // 자막이 흐르는 기본 속도 (px/초)
 
+/* ================= 등수별 이미지 배정 ==================
+ * 채팅 1·2·3위, 후원 1·2·3위는 아래에 지정한 이미지를 쓰고,
+ * 그 밖의 순위는 FALLBACK_IMAGES를 순서대로 돌려가며 사용한다.
+ * 이미지 파일은 web/images/ 폴더에 있다.
+ */
+const STAY_RANK_IMAGES     = ['wolfu11.png', 'wolfu14.png', 'wolfu9.png'];
+const CHAT_RANK_IMAGES     = ['wolfu13.png', 'wolfu12.png', 'wolfu6.png'];
+const DONATION_RANK_IMAGES = ['wolfu3.png',  'wolfu13.png', 'wolfu1.png'];
+// 위 1~3위에 지정되지 않은 이미지들 (4위 이하에서 순서대로 반복 사용)
+const FALLBACK_IMAGES = [
+  'wolfu2.png', 'wolfu4.png', 'wolfu5.png', 'wolfu7.png',
+  'wolfu8.png', 'wolfu10.png', 'wolfu15.png'
+];
+
+/* ================= 유틸 ================= */
 function esc(s) {
   const d = document.createElement('div');
   d.textContent = s ?? '';
   return d.innerHTML;
 }
 
-function section(eyebrowText, eyebrowClass, titleText, innerHtml) {
-  return `
-    <section class="credit-section">
-      <p class="eyebrow ${eyebrowClass}">${eyebrowText}</p>
-      <h2 class="section-title">${titleText}</h2>
-      <hr class="rule">
-      ${innerHtml}
-    </section>`;
+/** kind: 'stay' | 'chat' | 'donation', index: 0-based 순위 */
+function imageForRank(kind, index) {
+  const assigned = kind === 'stay' ? STAY_RANK_IMAGES
+                 : kind === 'chat' ? CHAT_RANK_IMAGES
+                 : DONATION_RANK_IMAGES;
+  if (index < assigned.length) return assigned[index];
+  return FALLBACK_IMAGES[(index - assigned.length) % FALLBACK_IMAGES.length];
 }
 
-function rankSpan(i) {
-  if (i === 0) return { cls: 'line top3 gold', rank: '🥇' };
-  if (i === 1) return { cls: 'line top3 silver', rank: '🥈' };
-  if (i === 2) return { cls: 'line top3 bronze', rank: '🥉' };
-  return { cls: 'line', rank: String(i + 1) };
+function avatarHtml(kind, index) {
+  return `<span class="avatar"><img src="images/${imageForRank(kind, index)}" alt=""></span>`;
 }
 
-function renderCredits(data) {
-  const today = new Date();
-  const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
-
-  let html = `
-    <p class="eyebrow">TODAY'S BROADCAST</p>
-    <h1 class="title">오늘도 함께해주셔서<br>감사합니다</h1>
-    <p class="subdate">${dateStr}</p>
-  `;
-
-  let donationBody;
-  if (!data.donations.length) {
-    donationBody = `<p class="empty">오늘은 없었어요</p>`;
-  } else {
-    donationBody = data.donations.map((d, i) => {
-      const r = rankSpan(i);
-      return `<p class="${r.cls}"><span class="rank">${r.rank}</span><span class="nick">${esc(d.nickname)}</span><span class="amount">★ ${d.total}</span></p>`;
-    }).join('');
-  }
-  html += section('DONATION · 후원 TOP 10', '', '별풍선 &amp; 후원을 보내주신 분들', donationBody);
-
-  let subBody;
-  if (!data.subscriptions.length) {
-    subBody = `<p class="empty">오늘은 없었어요</p>`;
-  } else {
-    subBody = data.subscriptions.map((s, i) => {
-      const r = rankSpan(i);
-      return `<p class="${r.cls}"><span class="rank">${r.rank}</span><span class="nick">${esc(s.nickname)}</span>${s.count > 1 ? `<span class="count">x${s.count}</span>` : ''}</p>`;
-    }).join('');
-  }
-  html += section('SUBSCRIBE · 구독 TOP 10', 'violet', '구독해주신 분들', subBody);
-
-  let chatBody;
-  if (!data.chat.length) {
-    chatBody = `<p class="empty">오늘은 없었어요</p>`;
-  } else {
-    chatBody = data.chat.map((c, i) => {
-      const r = rankSpan(i);
-      return `<p class="${r.cls}"><span class="rank">${r.rank}</span><span class="nick">${esc(c.nickname)}</span><span class="count">${c.count}회</span></p>`;
-    }).join('');
-  }
-  html += section('CHAT · 채팅 TOP 10', 'mint', '채팅으로 함께해주신 분들', chatBody);
-
-  let stayBody;
-  if (!data.stay.length) {
-    stayBody = `<p class="empty">오늘은 없었어요</p>`;
-  } else {
-    stayBody = data.stay.map((c, i) => {
-      const r = rankSpan(i);
-      return `<p class="${r.cls}"><span class="rank">${r.rank}</span><span class="nick">${esc(c.nickname)}</span><span class="stay">${c.stayMinutes}분</span></p>`;
-    }).join('');
-  }
-  html += section('STAY · 시청시간 TOP 10', 'muted', '오래 함께해주신 분들', stayBody);
-
-  html += `<p class="closing">✦ 다음 방송에서 또 만나요 ✦</p>`;
-
-  return html;
+/** 1~3등은 금/은/동, 그 밖은 숫자 순위 */
+function rankMeta(i) {
+  if (i === 0) return { cls: 'gold',   label: '🥇' };
+  if (i === 1) return { cls: 'silver', label: '🥈' };
+  if (i === 2) return { cls: 'bronze', label: '🥉' };
+  return { cls: '', label: String(i + 1) };
 }
 
-function spawnStars() {
-  const layer = document.getElementById('stars');
-  layer.innerHTML = '';
-  const count = 22;
-  for (let i = 0; i < count; i++) {
-    const s = document.createElement('div');
-    s.className = 'star';
-    s.style.left = Math.random() * 100 + '%';
-    const duration = 8 + Math.random() * 10;
-    const delay = Math.random() * duration;
-    s.style.animationDuration = duration + 's';
-    s.style.animationDelay = '-' + delay + 's';
-    layer.appendChild(s);
-  }
+function cardHtml(kind, rankIndex, nickname, countText) {
+  const meta = rankMeta(rankIndex);
+  const top3 = meta.cls ? 'top3 ' + meta.cls : '';
+  return {
+    cls: top3,
+    html: `${avatarHtml(kind, rankIndex)}
+      <div class="name-box">
+        <div class="name-row">
+          <span class="rank-badge">${meta.label}</span>
+          <span class="nick">${esc(nickname)}</span>
+        </div>
+        <div class="count">${countText}</div>
+      </div>`
+  };
 }
 
-function playCredits(data) {
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function showScene(id) {
+  document.querySelectorAll('.scene').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* 1920x1080 기준으로 만든 캔버스를, 실제 브라우저 소스 크기에 맞춰
+   비율을 유지한 채 축소/확대하고 가운데에 놓는다.
+   OBS 브라우저 소스를 1920x1080으로 잡으면 배율 1 그대로 표시된다. */
+const DESIGN_W = 1920;
+const DESIGN_H = 1080;
+
+function fitStage() {
   const stage = document.getElementById('stage');
-  const scroller = document.getElementById('scroller');
-
-  scroller.innerHTML = renderCredits(data);
-  stage.style.display = 'block';
-  spawnStars();
-
-  scroller.style.transition = 'none';
-  scroller.style.transform = 'translateX(-50%) translateY(100vh)';
-
-  requestAnimationFrame(() => {
-    const contentHeight = scroller.scrollHeight;
-    const distance = window.innerHeight + contentHeight;
-    const duration = distance / PIXELS_PER_SECOND;
-
-    scroller.offsetHeight;
-    scroller.style.transition = `transform ${duration}s linear`;
-    scroller.style.transform = `translateX(-50%) translateY(-${contentHeight}px)`;
-
-    setTimeout(() => {
-      stage.style.display = 'none';
-    }, duration * 1000 + 400);
-  });
+  const scale = Math.min(window.innerWidth / DESIGN_W, window.innerHeight / DESIGN_H);
+  const offsetX = (window.innerWidth - DESIGN_W * scale) / 2;
+  const offsetY = (window.innerHeight - DESIGN_H * scale) / 2;
+  stage.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
 }
 
-const API_BASE = new URLSearchParams(location.search).get('api') || '';
+window.addEventListener('resize', fitStage);
+
+/* ================= 자막 티커 (시청시간 / 채팅 공용) =================
+ * kind      : 'stay' | 'chat'  (등수별 이미지 배정에 쓰임)
+ * sceneId   : 표시할 씬의 id
+ * trackId   : 카드가 들어갈 트랙의 id
+ * list      : [{ nickname, ... }] 1위부터 정렬된 배열
+ * labelFn   : 각 항목의 아래 숫자 문구를 만드는 함수
+ * durationMs: 자막이 흐르는 시간
+ * emptyText : 데이터가 없을 때 보여줄 문구
+ */
+async function playTicker(kind, sceneId, trackId, list, labelFn, durationMs, emptyText) {
+  showScene(sceneId);
+  const track = document.getElementById(trackId);
+
+  if (!list.length) {
+    track.innerHTML = `<div class="ticker-card"><span class="empty-msg">${emptyText}</span></div>`;
+    track.style.transition = 'none';
+    track.style.left = '0';
+    track.style.width = DESIGN_W + 'px';
+    track.style.justifyContent = 'center';
+    track.style.transform = 'translateX(0)';
+    await wait(3000);
+    return;
+  }
+
+  // 꼴찌 -> 1위 순서로 화면에 등장해야 하므로, 배열을 뒤집어서 DOM에 넣는다.
+  const reversed = [...list].reverse();
+  track.style.left = '0';
+  track.innerHTML = reversed.map((item, idx) => {
+    const rankIndex = list.length - 1 - idx;
+    const card = cardHtml(kind, rankIndex, item.nickname, labelFn(item));
+    return `<div class="ticker-card ${card.cls}">${card.html}</div>`;
+  }).join('');
+
+  track.style.transition = 'none';
+  track.style.transform = 'translateX(1920px)';
+  track.offsetWidth; // 강제 reflow
+
+  // 카드 전체가 오른쪽 밖에서 왼쪽 밖으로 완전히 빠져나가는 거리
+  const trackWidth = track.scrollWidth;
+  const distance = trackWidth + DESIGN_W;
+
+  // 기본 속도로 흐르는 데 걸리는 시간을 구하되, 설정한 최대 시간은 넘지 않는다.
+  const natural = (distance / TICKER_SPEED) * 1000;
+  const duration = Math.min(durationMs, Math.max(6000, natural));
+
+  track.style.transition = `transform ${duration}ms linear`;
+  track.style.transform = `translateX(-${trackWidth}px)`;
+
+  await wait(duration);
+}
+
+/* ================= 씬 2: 후원 리빌 ================= */
+async function playDonationReveal(donationList) {
+  showScene('sceneDonation');
+  const host = document.getElementById('revealHost');
+  host.innerHTML = '';
+
+  if (!donationList.length) {
+    host.innerHTML = `<p class="empty-msg">오늘은 후원이 없었어요</p>`;
+    await wait(4000);
+    return;
+  }
+
+  // 시상대 자리 5칸을 먼저 잡아두고(투명 상태), 5위 -> 1위 순서로 하나씩 나타나게 한다.
+  // 이렇게 해야 새 카드가 등장할 때마다 이미 나온 카드들이 옆으로 밀리지 않는다.
+  const elements = donationList.map((d, rankIndex) => {
+    const card = cardHtml('donation', rankIndex, d.nickname, `★ ${d.total}`);
+    const el = document.createElement('div');
+    el.className = 'reveal-card pos' + (rankIndex + 1) + ' ' + card.cls;
+    el.innerHTML = card.html;
+    host.appendChild(el);
+    return el;
+  });
+
+  const gap = Math.max(1200, Math.floor((DONATION_MS * 0.7) / elements.length));
+
+  for (let rankIndex = elements.length - 1; rankIndex >= 0; rankIndex--) {
+    elements[rankIndex].classList.add('show');
+    await wait(gap);
+  }
+
+  // 5명이 다 뜬 상태로 잠시 머무른다
+  await wait(Math.max(2000, Math.floor(DONATION_MS * 0.3)));
+}
+
+/* ================= 전체 재생 ================= */
+async function playAll(data) {
+  const stage = document.getElementById('stage');
+  stage.style.display = 'block';
+  fitStage();
+
+  await playTicker('stay', 'sceneStay', 'stayTrack', data.stay || [],
+                   item => `${item.stayMinutes}분`, STAY_MS, '오늘은 기록이 없었어요');
+  await playTicker('chat', 'sceneChat', 'chatTrack', data.chat || [],
+                   item => `${item.count}개`, TICKER_MS, '오늘은 채팅이 없었어요');
+  await playDonationReveal(data.donations || []);
+
+  stage.style.display = 'none';
+}
+
+/* ================= 데이터 로드 & 시작 =================
+ * 페이지가 열리는 순간(= OBS에서 이 소스가 활성화/새로고침되는 순간) 바로 재생을 시작한다.
+ *
+ * 이 페이지를 자바 프로그램이 직접 서빙하지 않고(GitHub Pages 등 다른 곳에 올려서) 쓰는
+ * 경우, 데이터가 있는 서버 주소를 ?api=https://xxxx.ngrok-free.dev 처럼 쿼리 파라미터로
+ * 넘겨주면 된다. 안 넘기면 지금 페이지와 같은 주소(상대 경로)를 그대로 쓴다.
+ *
+ * 테스트용 파라미터:
+ *   ?demo=1  → 서버 없이 가짜 데이터로 재생 (파일을 그냥 브라우저로 열어도 동작)
+ *   ?fast=1  → 각 씬을 짧게 줄여서 빠르게 확인
+ */
+const params   = new URLSearchParams(location.search);
+const API_BASE = params.get('api') || '';
+const IS_DEMO  = params.get('demo') === '1';
+const IS_FAST  = params.get('fast') === '1';
+
+if (IS_FAST) {
+  STAY_MS = 12000;
+  TICKER_MS = 12000;
+  DONATION_MS = 8000;
+}
+
+/** 데모용 가짜 데이터 - 채팅 50명, 후원 5명 */
+function demoData() {
+  const names = ['테스트유저','울푸사랑','카푸조아','달빛여우','초코라떼','민트초코','구름산책',
+    '별헤는밤','포도알','한밤의곰','토끼발자국','노을빛','새벽두시','바다거북','솜사탕구름',
+    '레몬사탕','까치집','오렌지빛','밤하늘별','하양이','보름달','산책중','고구마맛탕','딸기우유',
+    '눈사람','참새방앗간','물결소리','붕어빵','귤까먹기','따뜻한손','종이비행기','바람개비',
+    '햇살조각','파도소리','도토리','반달곰','청포도','수박화채','달콤한밤','솔방울','꿀떡',
+    '무지개떡','은하수','민들레','코코넛','살구꽃','자몽에이드','호랑이꼬리','연필심','목화솜'];
+  const chat = names.map((n, i) => ({ nickname: n, count: 700 - i * 13 }));
+  // 시청시간은 채팅 순위와 다른 순서로 보이도록 살짝 섞어둔다
+  const stay = [...names].reverse().map((n, i) => ({ nickname: n, stayMinutes: 320 - i * 6 }));
+  return {
+    stay: stay,
+    chat: chat,
+    donations: [
+      { nickname: '테스트유저', total: 1500 },
+      { nickname: '울푸사랑',   total: 820 },
+      { nickname: '카푸조아',   total: 500 },
+      { nickname: '달빛여우',   total: 210 },
+      { nickname: '초코라떼',   total: 100 }
+    ]
+  };
+}
 
 async function start() {
+  if (IS_DEMO) {
+    await playAll(demoData());
+    return;
+  }
   try {
     const res = await fetch(API_BASE + '/api/credits', {
       headers: { 'ngrok-skip-browser-warning': 'true' }
     });
     const data = await res.json();
-    playCredits(data);
+    await playAll(data);
   } catch (e) {
     setTimeout(start, 1000);
   }
