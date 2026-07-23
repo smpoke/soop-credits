@@ -254,7 +254,7 @@ function imageForRank(kind, index) {
 }
 
 function avatarHtml(kind, index) {
-  return `<span class="avatar"><img src="images/${imageForRank(kind, index)}" alt=""></span>`;
+  return `<span class="avatar"><img src="${ASSET_BASE}images/${imageForRank(kind, index)}" alt=""></span>`;
 }
 
 /** 1~3등은 금/은/동, 그 밖은 숫자 순위 */
@@ -419,6 +419,15 @@ async function playAll(data) {
  */
 const params   = new URLSearchParams(location.search);
 const API_BASE = params.get('api') || '';
+
+/* 이미지를 어디서 불러올지 정한다.
+   기본값은 데이터와 같은 서버(자바 프로그램)이므로, 이 페이지를 GitHub Pages 등 다른
+   곳에 올려도 이미지를 따로 올릴 필요가 없다.
+   이미지를 이 페이지와 같은 곳에 올려두고 그쪽에서 불러오고 싶으면 ?assets= 를 빈 값으로
+   붙이면 된다 (예: ...overlay.html?api=https://xxx&assets=). */
+const assetsParam  = params.get('assets');
+const rawAssetBase = assetsParam !== null ? assetsParam : API_BASE;
+const ASSET_BASE   = rawAssetBase ? rawAssetBase.replace(/\/$/, '') + '/' : '';
 const IS_DEMO  = params.get('demo') === '1';
 const IS_FAST  = params.get('fast') === '1';
 
